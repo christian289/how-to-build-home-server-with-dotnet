@@ -343,6 +343,32 @@
 - [리눅스 관련 용어](z-appendix/appendix-f.md#리눅스-관련-용어)
 - 홈서버 관련 약어
 
+### [부록 G: 추가로 고려할 고급 서비스](z-appendix/appendix-g.md)
+
+- [G.1 서비스 디스커버리 및 설정 관리](z-appendix/appendix-g.md#g1-서비스-디스커버리-및-설정-관리)
+  - [Consul](z-appendix/appendix-g.md#consul)
+- [G.2 시크릿 관리](z-appendix/appendix-g.md#g2-시크릿-관리)
+  - [Vault](z-appendix/appendix-g.md#vault)
+- [G.3 현대적인 리버스 프록시](z-appendix/appendix-g.md#g3-현대적인-리버스-프록시)
+  - [Traefik](z-appendix/appendix-g.md#traefik)
+- [G.4 메시지 큐](z-appendix/appendix-g.md#g4-메시지-큐)
+  - [RabbitMQ](z-appendix/appendix-g.md#rabbitmq)
+  - [Apache Kafka](z-appendix/appendix-g.md#apache-kafka)
+- [G.5 오브젝트 스토리지](z-appendix/appendix-g.md#g5-오브젝트-스토리지)
+  - [MinIO](z-appendix/appendix-g.md#minio)
+- [G.6 로그 분석](z-appendix/appendix-g.md#g6-로그-분석)
+  - [Elastic Stack (ELK)](z-appendix/appendix-g.md#elastic-stack-elk)
+- [G.7 통합 인증 (SSO)](z-appendix/appendix-g.md#g7-통합-인증-sso)
+  - [Keycloak](z-appendix/appendix-g.md#keycloak)
+- [G.8 완전한 DevOps 플랫폼](z-appendix/appendix-g.md#g8-완전한-devops-플랫폼)
+  - [GitLab](z-appendix/appendix-g.md#gitlab)
+- [G.9 워크플로우 오케스트레이션](z-appendix/appendix-g.md#g9-워크플로우-오케스트레이션)
+  - [Apache Airflow](z-appendix/appendix-g.md#apache-airflow)
+- [G.10 분산 추적](z-appendix/appendix-g.md#g10-분산-추적)
+  - [Jaeger](z-appendix/appendix-g.md#jaeger)
+- [G.11 서비스별 권장 환경](z-appendix/appendix-g.md#g11-서비스별-권장-환경)
+- [G.12 선택 가이드](z-appendix/appendix-g.md#g12-선택-가이드)
+
 ## [맺음말](conclusion.md)
 
 - 지속적인 학습의 중요성
