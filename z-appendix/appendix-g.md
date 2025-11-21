@@ -90,7 +90,131 @@ volumes:
 
 ---
 
-## G.3 현대적인 리버스 프록시
+## G.3 팀 비밀번호 관리
+
+### Passbolt
+
+[Passbolt](https://www.passbolt.com/)는 오픈소스 팀 협업용 비밀번호 관리자입니다.
+
+**주요 기능**:
+- 팀 비밀번호 공유 및 관리
+- 역할 기반 접근 제어 (RBAC)
+- 브라우저 확장 프로그램 (Chrome, Firefox, Edge)
+- 모바일 앱 (iOS, Android)
+- 감사 로그 및 활동 추적
+- 종단 간 암호화 (E2EE)
+- 태그 및 폴더 구조
+
+**Docker 설치**:
+
+```yaml
+version: '3.8'
+
+services:
+  passbolt-db:
+    image: mariadb:10.11
+    container_name: passbolt-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=passbolt
+      - MYSQL_USER=passbolt
+      - MYSQL_PASSWORD=passbolt_password
+    volumes:
+      - passbolt-db:/var/lib/mysql
+
+  passbolt:
+    image: passbolt/passbolt:latest-ce
+    container_name: passbolt
+    restart: unless-stopped
+    ports:
+      - "8443:443"
+      - "8880:80"
+    environment:
+      - APP_FULL_BASE_URL=https://passbolt.homelab.local
+      - DATASOURCES_DEFAULT_HOST=passbolt-db
+      - DATASOURCES_DEFAULT_USERNAME=passbolt
+      - DATASOURCES_DEFAULT_PASSWORD=passbolt_password
+      - DATASOURCES_DEFAULT_DATABASE=passbolt
+    volumes:
+      - passbolt-gpg:/etc/passbolt/gpg
+      - passbolt-jwt:/etc/passbolt/jwt
+    depends_on:
+      - passbolt-db
+
+volumes:
+  passbolt-db:
+  passbolt-gpg:
+  passbolt-jwt:
+```
+
+**첫 설정**:
+
+```bash
+# 첫 관리자 계정 생성
+docker exec passbolt su -m -c "/usr/share/php/passbolt/bin/cake \
+  passbolt register_user \
+  -u admin@homelab.local \
+  -f Admin \
+  -l User \
+  -r admin" -s /bin/sh www-data
+```
+
+브라우저에서 생성된 링크로 이동하여 계정 설정 완료.
+
+**브라우저 확장 프로그램 설치**:
+
+1. [Chrome 웹 스토어](https://chrome.google.com/webstore/detail/passbolt/didegimhafipceonhjepacocaffmoppf) 또는 [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/passbolt/)에서 설치
+2. 확장 프로그램 설정 → Passbolt 서버 URL 입력: `https://passbolt.homelab.local`
+3. GPG 키 생성 및 등록
+
+**주요 사용 시나리오**:
+
+**시나리오 1: 팀 API 키 공유**
+```
+1. Passbolt에서 "AWS API Key" 비밀번호 생성
+2. 개발팀 그룹과 공유 (읽기 전용)
+3. 팀원들은 브라우저 확장으로 자동 입력
+4. 감사 로그로 누가 언제 접근했는지 추적
+```
+
+**시나리오 2: 서비스 자격증명 관리**
+```
+- 데이터베이스 비밀번호
+- SMTP 자격증명
+- 외부 서비스 토큰
+→ 모두 Passbolt에 저장하고 필요한 팀원과만 공유
+```
+
+**Vaultwarden vs Passbolt 비교**:
+
+| 기능 | Vaultwarden (제10장) | Passbolt |
+|------|---------------------|----------|
+| 대상 | 개인용 비밀번호 관리 | 팀 협업용 비밀번호 관리 |
+| 공유 | 제한적 (Org 기능) | 강력한 팀 공유 |
+| 감사 로그 | 제한적 | 상세한 활동 추적 |
+| 권한 관리 | 기본적 | 세밀한 RBAC |
+| 브라우저 확장 | Bitwarden 호환 | Passbolt 전용 |
+| 리소스 | 가벼움 (~100MB) | 중간 (~512MB) |
+
+💼 **소규모 조직 적용**:
+- **팀 비밀번호 중앙 관리**: 20명 팀에서 공통 서비스 자격증명 안전하게 공유
+- **권한 분리**: 개발자는 개발 DB 접근, 운영팀은 운영 DB 접근 (역할별 권한)
+- **비밀번호 회전**: 퇴사자 발생 시 공유된 비밀번호 쉽게 변경 및 재배포
+- **감사 추적**: 누가 언제 어떤 비밀번호에 접근했는지 기록
+- **비용 절감**: 1Password Teams ($7.99/user/월), LastPass Teams ($6/user/월) 대비 무료
+
+**예시 시나리오**:
+- 20명 팀 × $7.99/월 = $159.80/월 ($1,918/년) → Passbolt로 $0
+- AWS 루트 계정 비밀번호를 CTO와 시니어 개발자 2명만 공유
+- Slack Webhook URL을 개발팀 전체와 공유
+- 퇴사자 발생 시 해당 인원이 접근한 모든 비밀번호 목록 확인 후 일괄 변경
+
+**공식 사이트**: [https://www.passbolt.com/](https://www.passbolt.com/)
+
+---
+
+## G.4 현대적인 리버스 프록시
 
 ### Traefik
 
@@ -141,7 +265,7 @@ services:
 
 ---
 
-## G.4 메시지 큐
+## G.5 메시지 큐
 
 ### RabbitMQ
 
@@ -234,7 +358,7 @@ volumes:
 
 ---
 
-## G.5 오브젝트 스토리지
+## G.6 오브젝트 스토리지
 
 ### MinIO
 
@@ -297,7 +421,7 @@ await minio.PutObjectAsync(new PutObjectArgs()
 
 ---
 
-## G.6 로그 분석
+## G.7 로그 분석
 
 ### Elastic Stack (ELK)
 
@@ -352,7 +476,7 @@ volumes:
 
 ---
 
-## G.7 통합 인증 (SSO)
+## G.8 통합 인증 (SSO)
 
 ### Keycloak
 
@@ -416,7 +540,7 @@ builder.Services.AddAuthentication(options =>
 
 ---
 
-## G.8 완전한 DevOps 플랫폼
+## G.9 완전한 DevOps 플랫폼
 
 ### GitLab
 
@@ -468,7 +592,7 @@ volumes:
 
 ---
 
-## G.9 워크플로우 오케스트레이션
+## G.10 워크플로우 오케스트레이션
 
 ### Apache Airflow
 
@@ -493,7 +617,7 @@ volumes:
 
 ---
 
-## G.10 분산 추적
+## G.11 분산 추적
 
 ### Jaeger
 
@@ -535,12 +659,13 @@ services:
 
 ---
 
-## G.11 서비스별 권장 환경
+## G.12 서비스별 권장 환경
 
 | 서비스 | 최소 RAM | 권장 대상 |
 |--------|---------|----------|
 | Consul | 512MB | 마이크로서비스 환경 |
 | Vault | 512MB | 시크릿 관리 필요 시 |
+| Passbolt | 512MB | 팀 비밀번호 관리 |
 | Traefik | 256MB | 동적 라우팅 필요 시 |
 | RabbitMQ | 512MB | 비동기 작업 처리 |
 | Kafka/Redpanda | 1GB+ | 대용량 스트리밍 |
@@ -553,7 +678,7 @@ services:
 
 ---
 
-## G.12 선택 가이드
+## G.13 선택 가이드
 
 ### 소규모 조직 (1-20명)에 권장
 
@@ -566,6 +691,7 @@ services:
 ### 추가로 고려할 만한 서비스
 
 **시크릿 관리가 필요하다면**: Vault
+**팀 비밀번호 관리가 필요하다면**: Passbolt
 **S3 호환 스토리지가 필요하다면**: MinIO
 **통합 로그인(SSO)이 필요하다면**: Keycloak
 **메시지 큐가 필요하다면**: RabbitMQ
