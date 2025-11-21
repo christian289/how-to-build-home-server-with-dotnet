@@ -4,6 +4,23 @@
 
 [Docker](https://www.docker.com/)는 애플리케이션을 컨테이너로 패키징하여 실행하는 플랫폼입니다. 홈서버의 핵심 기술이며, 대부분의 서비스를 Docker로 운영하게 됩니다.
 
+### Docker vs Podman
+
+컨테이너 런타임으로는 Docker 외에도 [Podman](https://podman.io/)이 있습니다.
+
+**Docker**:
+- 가장 널리 사용되는 컨테이너 플랫폼
+- 풍부한 생태계와 문서
+- 데몬 기반 아키텍처 (dockerd)
+
+**Podman**:
+- Red Hat에서 개발한 Docker 대체재
+- 데몬리스 아키텍처 (루트 권한 불필요)
+- Docker 명령어 호환 (`alias docker=podman`)
+- Kubernetes YAML 지원
+
+💼 **소규모 조직 적용**: 이 책에서는 생태계가 더 성숙한 **Docker**를 기준으로 설명합니다. Podman은 보안 요구사항이 높은 환경에서 고려할 수 있습니다.
+
 ### Docker가 홈서버에 적합한 이유
 
 **장점**:

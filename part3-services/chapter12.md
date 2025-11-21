@@ -67,100 +67,127 @@ git clone ssh://git@homeserver:2222/username/repo.git
 git clone http://homeserver:3002/username/repo.git
 ```
 
-## 12.2 CI/CD 파이프라인 (Drone CI)
+## 12.2 CI/CD 파이프라인 (Gitea Actions)
 
-[Drone CI](https://www.drone.io/)는 컨테이너 기반 CI/CD 도구입니다.
+[Gitea Actions](https://docs.gitea.com/usage/actions/overview)는 Gitea 1.19+에 내장된 CI/CD 시스템으로, GitHub Actions와 호환됩니다.
+
+### Gitea Actions 활성화
+
+Gitea `app.ini` 설정 파일 수정 (또는 환경변수):
 
 ```yaml
 version: '3.8'
 
 services:
-  drone-server:
-    image: drone/drone:latest
-    container_name: drone-server
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
     restart: unless-stopped
     environment:
-      - DRONE_GITEA_SERVER=http://homeserver:3002
-      - DRONE_GITEA_CLIENT_ID=your_oauth_client_id
-      - DRONE_GITEA_CLIENT_SECRET=your_oauth_client_secret
-      - DRONE_RPC_SECRET=super_secret_rpc_key
-      - DRONE_SERVER_HOST=drone.homelab.local
-      - DRONE_SERVER_PROTO=http
-      - DRONE_USER_CREATE=username:gildong,admin:true
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=gitea-db:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      - GITEA__database__PASSWD=gitea
+      - GITEA__actions__ENABLED=true
+    volumes:
+      - ./gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     ports:
-      - "8086:80"
-    volumes:
-      - ./drone:/data
-
-  drone-runner:
-    image: drone/drone-runner-docker:latest
-    container_name: drone-runner
-    restart: unless-stopped
-    environment:
-      - DRONE_RPC_PROTO=http
-      - DRONE_RPC_HOST=drone-server
-      - DRONE_RPC_SECRET=super_secret_rpc_key
-      - DRONE_RUNNER_CAPACITY=2
-      - DRONE_RUNNER_NAME=homeserver-runner
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - "3002:3000"
+      - "2222:22"
     depends_on:
-      - drone-server
+      - gitea-db
 ```
 
-### Gitea OAuth 앱 생성
-
-1. Gitea → Settings → Applications → **Create OAuth2 Application**
-2. Application Name: `Drone CI`
-3. Redirect URI: `http://drone.homelab.local/login`
-4. Client ID와 Secret 복사 → Drone 환경변수에 입력
-
-### .drone.yml 파이프라인 예제
-
-**.NET 프로젝트 빌드 및 테스트**:
+### Act Runner 설치 (Gitea Actions 실행기)
 
 ```yaml
-kind: pipeline
-type: docker
-name: default
-
-steps:
-  - name: restore
-    image: mcr.microsoft.com/dotnet/sdk:8.0
-    commands:
-      - dotnet restore
-
-  - name: build
-    image: mcr.microsoft.com/dotnet/sdk:8.0
-    commands:
-      - dotnet build --no-restore -c Release
-
-  - name: test
-    image: mcr.microsoft.com/dotnet/sdk:8.0
-    commands:
-      - dotnet test --no-build -c Release
-
-  - name: publish
-    image: mcr.microsoft.com/dotnet/sdk:8.0
-    commands:
-      - dotnet publish -c Release -o ./publish
-    when:
-      branch:
-        - main
-
-  - name: docker-build
-    image: plugins/docker
-    settings:
-      repo: homeserver:5000/myapp
-      registry: homeserver:5000
-      tags:
-        - latest
-        - ${DRONE_COMMIT_SHA:0:8}
-      insecure: true
-    when:
-      branch:
-        - main
+  act-runner:
+    image: gitea/act_runner:latest
+    container_name: act-runner
+    restart: unless-stopped
+    environment:
+      - GITEA_INSTANCE_URL=http://gitea:3000
+      - GITEA_RUNNER_REGISTRATION_TOKEN=your_registration_token
+      - GITEA_RUNNER_NAME=homeserver-runner
+    volumes:
+      - ./act-runner:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gitea
 ```
+
+### Runner 등록 토큰 생성
+
+1. Gitea 웹 UI → **Site Administration** → **Actions** → **Runners**
+2. **Create new Runner** 클릭
+3. Registration Token 복사 → `act-runner` 환경변수에 입력
+
+### .gitea/workflows/build.yml 파이프라인 예제
+
+**.NET 프로젝트 빌드 및 테스트** (GitHub Actions 호환 문법):
+
+```yaml
+name: .NET Build and Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
+
+      - name: Publish
+        if: github.ref == 'refs/heads/main'
+        run: dotnet publish -c Release -o ./publish
+
+      - name: Build Docker image
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker build -t homeserver:5000/myapp:latest \
+                       -t homeserver:5000/myapp:${{ github.sha }} .
+          docker push homeserver:5000/myapp:latest
+          docker push homeserver:5000/myapp:${{ github.sha }}
+```
+
+💼 **소규모 조직 적용**: Gitea Actions는 별도 서비스 없이 Gitea에 내장되어 있어 관리 부담이 적습니다. GitHub Actions와 동일한 문법을 사용하므로 개발자 학습 비용도 낮습니다.
+
+### 다른 CI/CD 옵션
+
+**[Jenkins](https://www.jenkins.io/)** (전통적인 선택):
+- 가장 많이 사용되는 오픈소스 CI/CD
+- 플러그인 생태계가 풍부
+- 설정이 복잡할 수 있음
+
+**[Woodpecker CI](https://woodpecker-ci.org/)** (경량 대안):
+- Drone CI의 오픈소스 포크
+- Gitea 네이티브 지원
+- 간단한 YAML 설정
 
 ## 12.3 코드 서버 (code-server)
 
@@ -301,6 +328,193 @@ volumes:
 ```
 
 웹 UI: `http://homeserver:5050`
+
+### phpMyAdmin (MySQL/MariaDB 전용)
+
+[phpMyAdmin](https://www.phpmyadmin.net/)은 MySQL/MariaDB 웹 관리 도구입니다.
+
+```yaml
+version: '3.8'
+
+services:
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: unless-stopped
+    ports:
+      - 8082:80
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - UPLOAD_LIMIT=50M
+```
+
+웹 UI: `http://homeserver:8082`
+
+## 12.5 Docker 레지스트리 (Harbor)
+
+[Harbor](https://goharbor.io/)는 엔터프라이즈급 Docker 레지스트리입니다.
+
+```yaml
+version: '3.8'
+
+services:
+  harbor-db:
+    image: goharbor/harbor-db:v2.10.0
+    container_name: harbor-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=harbor_password
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=registry
+    volumes:
+      - harbor-db:/var/lib/postgresql/data
+
+  harbor-core:
+    image: goharbor/harbor-core:v2.10.0
+    container_name: harbor-core
+    restart: unless-stopped
+    environment:
+      - CORE_SECRET=change_this_secret
+      - JOBSERVICE_SECRET=change_this_secret
+    depends_on:
+      - harbor-db
+    volumes:
+      - harbor-data:/data
+
+  harbor-registry:
+    image: goharbor/registry-photon:v2.10.0
+    container_name: harbor-registry
+    restart: unless-stopped
+    volumes:
+      - harbor-registry:/storage
+
+  harbor-portal:
+    image: goharbor/harbor-portal:v2.10.0
+    container_name: harbor-portal
+    restart: unless-stopped
+    ports:
+      - "8088:8080"
+    depends_on:
+      - harbor-core
+
+volumes:
+  harbor-db:
+  harbor-data:
+  harbor-registry:
+```
+
+기본 로그인: `admin` / `Harbor12345`
+
+💼 **소규모 조직 적용**: Harbor는 Docker 이미지 스캔, 권한 관리, 복제 기능을 제공합니다. 팀 내 Docker 이미지를 중앙에서 관리하고 보안 취약점을 검사할 수 있습니다.
+
+## 12.6 애플리케이션 모니터링 (Sentry)
+
+[Sentry](https://sentry.io/)는 오픈소스 애플리케이션 에러 추적 시스템입니다.
+
+```yaml
+version: '3.8'
+
+services:
+  sentry-redis:
+    image: redis:7-alpine
+    container_name: sentry-redis
+    restart: unless-stopped
+    volumes:
+      - sentry-redis:/data
+
+  sentry-postgres:
+    image: postgres:16-alpine
+    container_name: sentry-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=sentry
+      - POSTGRES_PASSWORD=sentry
+      - POSTGRES_DB=sentry
+    volumes:
+      - sentry-postgres:/var/lib/postgresql/data
+
+  sentry:
+    image: sentry:latest
+    container_name: sentry
+    restart: unless-stopped
+    ports:
+      - "9090:9000"
+    environment:
+      - SENTRY_SECRET_KEY=your_secret_key_here
+      - SENTRY_POSTGRES_HOST=sentry-postgres
+      - SENTRY_DB_USER=sentry
+      - SENTRY_DB_PASSWORD=sentry
+      - SENTRY_REDIS_HOST=sentry-redis
+    depends_on:
+      - sentry-redis
+      - sentry-postgres
+    volumes:
+      - sentry-data:/var/lib/sentry/files
+
+  sentry-cron:
+    image: sentry:latest
+    container_name: sentry-cron
+    restart: unless-stopped
+    command: run cron
+    environment:
+      - SENTRY_SECRET_KEY=your_secret_key_here
+      - SENTRY_POSTGRES_HOST=sentry-postgres
+      - SENTRY_DB_USER=sentry
+      - SENTRY_DB_PASSWORD=sentry
+      - SENTRY_REDIS_HOST=sentry-redis
+    depends_on:
+      - sentry
+
+  sentry-worker:
+    image: sentry:latest
+    container_name: sentry-worker
+    restart: unless-stopped
+    command: run worker
+    environment:
+      - SENTRY_SECRET_KEY=your_secret_key_here
+      - SENTRY_POSTGRES_HOST=sentry-postgres
+      - SENTRY_DB_USER=sentry
+      - SENTRY_DB_PASSWORD=sentry
+      - SENTRY_REDIS_HOST=sentry-redis
+    depends_on:
+      - sentry
+
+volumes:
+  sentry-redis:
+  sentry-postgres:
+  sentry-data:
+```
+
+웹 UI: `http://homeserver:9090`
+
+### .NET 애플리케이션에서 Sentry 연동
+
+```bash
+dotnet add package Sentry.AspNetCore
+```
+
+`Program.cs`:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Sentry 초기화
+builder.WebHost.UseSentry(o =>
+{
+    o.Dsn = "http://your_sentry_key@homeserver:9090/1";
+    o.TracesSampleRate = 1.0;
+    o.Environment = builder.Environment.EnvironmentName;
+});
+
+var app = builder.Build();
+app.Run();
+```
+
+💼 **소규모 조직 적용**:
+- **SaaS 대비 비용 절감**: Sentry Cloud는 월 $26부터 시작하지만, 셀프 호스팅은 무료
+- 운영 중인 .NET 애플리케이션의 에러를 실시간으로 추적
+- Slack/Discord 연동으로 에러 발생 시 즉시 알림
 
 ---
 

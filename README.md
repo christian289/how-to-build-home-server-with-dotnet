@@ -128,7 +128,7 @@
 ### [제12장: 개발 환경 구축](part3-services/chapter12.md)
 
 - [12.1 Git 서버 (Gitea)](part3-services/chapter12.md#121-git-서버-gitea)
-- [12.2 CI/CD 파이프라인 (Drone CI)](part3-services/chapter12.md#122-cicd-파이프라인-drone-ci)
+- [12.2 CI/CD 파이프라인 (Gitea Actions)](part3-services/chapter12.md#122-cicd-파이프라인-gitea-actions)
 - [12.3 코드 서버 (code-server)](part3-services/chapter12.md#123-코드-서버-code-server)
 - [12.4 데이터베이스 관리](part3-services/chapter12.md#124-데이터베이스-관리)
   - [PostgreSQL/MySQL 설치](part3-services/chapter12.md#postgresqlmysql-설치)
@@ -181,7 +181,7 @@
   - 연결 풀 관리와 성능 최적화
   - Code First Migration
   - Database First Scaffolding
-  - 분산 캐싱 (Redis/SQL Server)
+  - 분산 캐싱 (Garnet/SQL Server)
 - 13.9 .NET 애플리케이션 모니터링과 로깅
   - Application Insights 연동
   - Serilog 구조화된 로깅

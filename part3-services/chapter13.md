@@ -111,7 +111,7 @@ docker compose up -d
 
 ### Docker Compose로 의존성 서비스 구축
 
-개발 시 필요한 데이터베이스, Redis 등을 Docker Compose로 관리합니다.
+개발 시 필요한 데이터베이스, 캐시 서버 등을 Docker Compose로 관리합니다.
 
 `docker-compose.dev.yml`:
 
@@ -131,13 +131,14 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:7-alpine
-    container_name: dev-redis
+  garnet:
+    image: ghcr.io/microsoft/garnet:latest
+    container_name: dev-garnet
     ports:
       - "6379:6379"
     volumes:
-      - redis-data:/data
+      - garnet-data:/data
+    command: --port 6379 --checkpointdir /data
 
   mailhog:
     image: mailhog/mailhog
@@ -148,8 +149,10 @@ services:
 
 volumes:
   postgres-data:
-  redis-data:
+  garnet-data:
 ```
+
+💼 **소규모 조직 적용**: [Microsoft Garnet](https://github.com/microsoft/garnet)은 Redis 프로토콜 호환 캐시 서버로, Redis 대비 더 높은 성능과 낮은 메모리 사용량을 제공합니다. Redis 클라이언트 라이브러리를 그대로 사용할 수 있습니다.
 
 ```bash
 # 개발 환경 시작
@@ -282,10 +285,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=myapp;Username=appuser;Password=apppassword
-      - Redis__ConnectionString=redis:6379
+      - Garnet__ConnectionString=garnet:6379
     depends_on:
       - postgres
-      - redis
+      - garnet
     networks:
       - app-network
 
@@ -302,18 +305,19 @@ services:
     networks:
       - app-network
 
-  redis:
-    image: redis:7-alpine
-    container_name: myapi-redis
+  garnet:
+    image: ghcr.io/microsoft/garnet:latest
+    container_name: myapi-garnet
     restart: always
     volumes:
-      - redis-data:/data
+      - garnet-data:/data
+    command: --port 6379 --checkpointdir /data
     networks:
       - app-network
 
 volumes:
   postgres-data:
-  redis-data:
+  garnet-data:
 
 networks:
   app-network:
@@ -468,7 +472,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Health Checks 추가
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!)
-    .AddRedis(builder.Configuration["Redis:ConnectionString"]!);
+    .AddRedis(builder.Configuration["Garnet:ConnectionString"]!); // Garnet은 Redis 프로토콜 호환
 
 var app = builder.Build();
 

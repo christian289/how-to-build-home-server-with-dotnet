@@ -179,9 +179,14 @@ C#으로 웹 UI를 구축하는 프레임워크입니다.
 오픈소스 관계형 데이터베이스입니다.
 - 공식 사이트: [PostgreSQL](https://www.postgresql.org/)
 
+### Microsoft Garnet
+Redis 프로토콜 호환 고성능 캐시 서버입니다. Microsoft에서 개발한 오픈소스 프로젝트로, Redis 대비 더 높은 처리량과 낮은 메모리 사용량을 제공합니다.
+- 공식 사이트: [Microsoft Garnet](https://github.com/microsoft/garnet)
+
 ### Redis
 인메모리 키-값 데이터베이스입니다.
 - 공식 사이트: [Redis](https://redis.io/)
+- **참고**: 이 책에서는 .NET 애플리케이션 캐싱에 Garnet 사용을 권장합니다.
 
 ### SQLite
 경량 파일 기반 데이터베이스입니다.
