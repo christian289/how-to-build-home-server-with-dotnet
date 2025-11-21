@@ -173,6 +173,10 @@ C#으로 웹 UI를 구축하는 프레임워크입니다.
 .NET 패키지 관리자입니다.
 - 공식 사이트: [NuGet](https://www.nuget.org/)
 
+### Nexus Repository
+Sonatype에서 개발한 범용 패키지 저장소 관리자입니다. NuGet, npm, Maven, Docker 등 다양한 포맷을 지원하며, 외부 패키지 캐싱 및 내부 패키지 배포에 사용됩니다.
+- 공식 사이트: [Sonatype Nexus](https://www.sonatype.com/products/nexus-repository)
+
 ## 데이터베이스 용어
 
 ### PostgreSQL

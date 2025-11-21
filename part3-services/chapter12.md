@@ -516,6 +516,225 @@ app.Run();
 - 운영 중인 .NET 애플리케이션의 에러를 실시간으로 추적
 - Slack/Discord 연동으로 에러 발생 시 즉시 알림
 
+## 12.7 패키지 저장소 (Nexus Repository)
+
+[Sonatype Nexus Repository OSS](https://www.sonatype.com/products/nexus-repository)는 범용 패키지 관리 저장소입니다.
+
+### 지원하는 패키지 포맷
+
+- **NuGet**: .NET 패키지
+- **npm**: Node.js 패키지
+- **Maven/Gradle**: Java 패키지
+- **PyPI**: Python 패키지
+- **Docker**: 컨테이너 이미지
+- **Raw**: 일반 파일 (바이너리, 문서 등)
+
+### Nexus Repository 설치
+
+```yaml
+version: '3.8'
+
+services:
+  nexus:
+    image: sonatype/nexus3:latest
+    container_name: nexus
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+      - "8082:8082"  # Docker registry (hosted)
+      - "8083:8083"  # Docker registry (group)
+    volumes:
+      - nexus-data:/nexus-data
+    environment:
+      - INSTALL4J_ADD_VM_PARAMS=-Xms512m -Xmx512m -XX:MaxDirectMemorySize=512m
+
+volumes:
+  nexus-data:
+```
+
+```bash
+docker compose up -d
+
+# 초기 관리자 비밀번호 확인
+docker exec nexus cat /nexus-data/admin.password
+```
+
+웹 UI: `http://homeserver:8081`
+
+- 초기 로그인: `admin` / (위에서 확인한 비밀번호)
+- 첫 로그인 후 비밀번호 변경 필수
+
+### NuGet Feed 설정
+
+#### 1. Nexus에서 NuGet Hosted Repository 생성
+
+1. **Server administration and configuration** (톱니바퀴 아이콘)
+2. **Repositories** → **Create repository** → **nuget (hosted)**
+3. Name: `nuget-private`
+4. Deployment policy: `Allow redeploy` (개발용) 또는 `Disable redeploy` (프로덕션)
+5. **Create repository** 클릭
+
+#### 2. NuGet Group Repository 생성 (권장)
+
+외부 NuGet.org와 내부 패키지를 통합:
+
+1. **Create repository** → **nuget (group)**
+2. Name: `nuget-all`
+3. Group → Member repositories:
+   - `nuget.org-proxy` (기본 제공)
+   - `nuget-private` (방금 생성)
+4. **Create repository** 클릭
+
+### .NET 프로젝트에서 사용
+
+#### NuGet.config 설정
+
+프로젝트 루트에 `NuGet.config` 생성:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <!-- Nexus 그룹 저장소 (외부 + 내부 통합) -->
+    <add key="nexus" value="http://homeserver:8081/repository/nuget-all/" />
+  </packageSources>
+
+  <packageSourceCredentials>
+    <nexus>
+      <add key="Username" value="deploy-user" />
+      <add key="ClearTextPassword" value="deploy-password" />
+    </nexus>
+  </packageSourceCredentials>
+</configuration>
+```
+
+#### 패키지 복원
+
+```bash
+# NuGet.config가 있는 디렉터리에서
+dotnet restore
+```
+
+### 내부 패키지 배포
+
+#### 1. API Key 생성
+
+1. Nexus 웹 UI → 사용자 아이콘 클릭 → **User Token**
+2. **Access user token** → 토큰 복사
+
+#### 2. 패키지 빌드 및 배포
+
+```bash
+# 패키지 빌드
+dotnet pack -c Release -o ./nupkg
+
+# Nexus에 배포
+dotnet nuget push ./nupkg/MyCompany.SharedLibrary.1.0.0.nupkg \
+  --source http://homeserver:8081/repository/nuget-private/ \
+  --api-key <YOUR_API_KEY>
+```
+
+#### 3. csproj에서 사용
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="MyCompany.SharedLibrary" Version="1.0.0" />
+  </ItemGroup>
+</Project>
+```
+
+### npm Registry 설정 (Node.js)
+
+#### Nexus에서 npm Hosted Repository 생성
+
+1. **Create repository** → **npm (hosted)**
+2. Name: `npm-private`
+
+#### .npmrc 설정
+
+```bash
+# 프로젝트 루트에 .npmrc 생성
+registry=http://homeserver:8081/repository/npm-all/
+
+# 인증 설정
+_auth=<BASE64_ENCODED_USER:PASS>
+email=admin@homelab.local
+always-auth=true
+```
+
+```bash
+# BASE64 인코딩 생성
+echo -n 'username:password' | base64
+```
+
+### Docker Registry 설정
+
+#### Nexus에서 Docker Hosted Repository 생성
+
+1. **Create repository** → **docker (hosted)**
+2. Name: `docker-private`
+3. HTTP: `8082` (포트)
+4. Enable Docker V1 API: 체크 (필요시)
+
+#### Docker 클라이언트 설정
+
+```bash
+# Docker 로그인
+docker login homeserver:8082
+Username: admin
+Password: your_password
+
+# 이미지 태그 및 푸시
+docker tag myapp:latest homeserver:8082/myapp:latest
+docker push homeserver:8082/myapp:latest
+
+# 이미지 풀
+docker pull homeserver:8082/myapp:latest
+```
+
+### Maven/Gradle Repository
+
+Java 프로젝트에서도 동일하게 사용 가능:
+
+```xml
+<!-- Maven pom.xml -->
+<repositories>
+  <repository>
+    <id>nexus</id>
+    <url>http://homeserver:8081/repository/maven-public/</url>
+  </repository>
+</repositories>
+
+<distributionManagement>
+  <repository>
+    <id>nexus</id>
+    <url>http://homeserver:8081/repository/maven-releases/</url>
+  </repository>
+</distributionManagement>
+```
+
+### Nexus 백업
+
+```bash
+# Nexus 데이터 백업
+docker exec nexus tar czf /tmp/nexus-backup.tar.gz /nexus-data
+docker cp nexus:/tmp/nexus-backup.tar.gz ./nexus-backup-$(date +%Y%m%d).tar.gz
+```
+
+💼 **소규모 조직 적용**:
+- **회사 내부 패키지 관리**: 공통 라이브러리를 NuGet 패키지로 배포하여 팀 간 코드 공유
+- **외부 의존성 캐싱**: 외부 NuGet.org, npm registry의 패키지를 캐싱하여 빌드 속도 향상 및 외부 장애 대응
+- **보안 강화**: 취약점이 있는 패키지 버전을 차단하고 승인된 패키지만 사용
+- **대역폭 절감**: 반복적으로 사용되는 패키지를 로컬에 캐싱하여 인터넷 트래픽 감소
+- **비용 절감**: Artifactory Cloud, MyGet 등 SaaS 서비스 대비 무료
+
+**예시 시나리오**:
+- 20명 팀에서 공통 인증 라이브러리를 `MyCompany.Auth` NuGet 패키지로 배포
+- 모든 프로젝트에서 `dotnet add package MyCompany.Auth` 한 줄로 인증 기능 통합
+- 인증 로직 변경 시 패키지 버전 업데이트만으로 전사 배포
+
 ---
 
-**다음 장에서는**: .NET 웹 애플리케이션을 개발하고 홈서버에 배포하는 전 과정을 상세히 알아보겠습니다 (이미 제13장에서 다뤘습니다).
+**다음 장에서는**: .NET 웹 애플리케이션을 개발하고 홈서버에 배포하는 전 과정을 상세히 알아보겠습니다.

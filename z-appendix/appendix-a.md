@@ -10,11 +10,15 @@
 ## A.2 개발 도구
 
 - **Gitea**: `gitea/gitea` - Git 서버
-- **Drone CI**: `drone/drone` - CI/CD
+- **Gitea Act Runner**: `gitea/act_runner` - CI/CD (Gitea Actions)
+- **Nexus Repository**: `sonatype/nexus3` - 패키지 저장소 (NuGet, npm, Maven, Docker)
+- **Harbor**: `goharbor/harbor-core` - 엔터프라이즈 Docker 레지스트리
+- **Sentry**: `sentry` - 애플리케이션 에러 추적
 - **code-server**: `lscr.io/linuxserver/code-server` - 웹 VS Code
 - **Adminer**: `adminer` - 데이터베이스 관리
 - **pgAdmin**: `dpage/pgadmin4` - PostgreSQL 관리
-- **Redis Commander**: `rediscommander/redis-commander` - Redis GUI
+- **phpMyAdmin**: `phpmyadmin` - MySQL/MariaDB 관리
+- **Microsoft Garnet**: `ghcr.io/microsoft/garnet` - Redis 호환 캐시
 
 ## A.3 미디어 관련
 

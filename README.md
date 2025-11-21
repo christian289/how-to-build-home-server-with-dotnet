@@ -133,6 +133,16 @@
 - [12.4 데이터베이스 관리](part3-services/chapter12.md#124-데이터베이스-관리)
   - [PostgreSQL/MySQL 설치](part3-services/chapter12.md#postgresqlmysql-설치)
   - [Adminer 웹 관리 도구](part3-services/chapter12.md#adminer-웹-관리-도구)
+  - [pgAdmin (PostgreSQL 전용)](part3-services/chapter12.md#pgadmin-postgresql-전용)
+  - [phpMyAdmin (MySQL/MariaDB 전용)](part3-services/chapter12.md#phpmyadmin-mysqlmariadb-전용)
+- [12.5 Docker 레지스트리 (Harbor)](part3-services/chapter12.md#125-docker-레지스트리-harbor)
+- [12.6 애플리케이션 모니터링 (Sentry)](part3-services/chapter12.md#126-애플리케이션-모니터링-sentry)
+  - [.NET 애플리케이션에서 Sentry 연동](part3-services/chapter12.md#net-애플리케이션에서-sentry-연동)
+- [12.7 패키지 저장소 (Nexus Repository)](part3-services/chapter12.md#127-패키지-저장소-nexus-repository)
+  - [NuGet Feed 설정](part3-services/chapter12.md#nuget-feed-설정)
+  - [npm Registry 설정 (Node.js)](part3-services/chapter12.md#npm-registry-설정-nodejs)
+  - [Docker Registry 설정](part3-services/chapter12.md#docker-registry-설정)
+  - [Maven/Gradle Repository](part3-services/chapter12.md#mavengradle-repository)
 
 ### [제13장: 웹 애플리케이션 개발과 배포](part3-services/chapter13.md)
 
